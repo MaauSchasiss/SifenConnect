@@ -1,0 +1,29 @@
+# Crear archivo .gitignore
+echo "# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+
+# Base de datos
+*.db
+*.sqlite3
+
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db" > .gitignore
