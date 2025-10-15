@@ -17,9 +17,10 @@ class Documento(Base):
     receptor = relationship("Receptor", back_populates="documento", uselist=False)
     items = relationship("Item", back_populates="documento")
     totales = relationship("Totales", back_populates="documento", uselist=False)
+    operacion_comercial = relationship("OperacionComercial", back_populates="documento", uselist=False)
 
 
-class Operacion(Base):
+class OperaciondeDE(Base):
     __tablename__ = "de_operacion"
     id = Column(Integer, primary_key=True)
     de_id = Column(Integer, ForeignKey("de_documento.id", ondelete="CASCADE"))
@@ -47,28 +48,33 @@ class Timbrado(Base):
 
     documento = relationship("Documento", back_populates="timbrado")
 
-
 class Emisor(Base):
     __tablename__ = "de_emisor"
     id = Column(Integer, primary_key=True)
     de_id = Column(Integer, ForeignKey("de_documento.id", ondelete="CASCADE"))
-    drucem = Column(String(20))
-    ddvemi = Column(SmallInteger)
-    itipcont = Column(SmallInteger)
-    ctipreg = Column(SmallInteger)
-    dnomemi = Column(String(255))
-    ddiremi = Column(String(255))
-    dnumcas = Column(String(10))
-    cdepemi = Column(SmallInteger)
-    ddesdepemi = Column(String(50))
-    cciuemi = Column(SmallInteger)
-    ddesciuemi = Column(String(50))
+    
+    # Campos según especificación D100-D129
+    drucem = Column(String(13))  # D101: RUC (3-13 caracteres)
+    ddvemi = Column(SmallInteger)  # D102: Dígito verificador
+    itipcont = Column(SmallInteger)  # D103: Tipo contribuyente (1,2)
+    ctipreg = Column(SmallInteger)  # D104: Tipo régimen (1-2 dígitos)
+    dnomemi = Column(String(255))  # D105: Nombre/Razón social
+    dnomfanemi = Column(String(255))  # D106: Nombre fantasía (opcional)
+    ddiremi = Column(String(255))  # D107: Dirección principal
+    dnumcas = Column(String(6))  # D108: Número casa (1-6 caracteres)
+    dcompdir1 = Column(String(255))  # D109: Complemento dirección 1 (opcional)
+    dcompdir2 = Column(String(255))  # D110: Complemento dirección 2 (opcional)
+    cdepemi = Column(SmallInteger)  # D111: Código departamento
+    ddesdepemi = Column(String(16))  # D112: Descripción departamento (6-16 chars)
+    cdisemi = Column(SmallInteger)  # D113: Código distrito (opcional)
+    ddesdisemi = Column(String(30))  # D114: Descripción distrito (opcional)
+    
+    # Campos adicionales (si los necesitas)
     dtelem = Column(String(50))
     demail = Column(String(100))
 
     actividades = relationship("EmisorActividad", back_populates="emisor")
     documento = relationship("Documento", back_populates="emisor")
-
 
 class EmisorActividad(Base):
     __tablename__ = "de_emisor_actividad"
@@ -158,3 +164,21 @@ class Totales(Base):
     dtbasgraiva = Column(Numeric(15,2))
 
     documento = relationship("Documento", back_populates="totales")
+
+class OperacionComercial(Base):
+    __tablename__ = "de_operacion_comercial"
+    
+    id = Column(Integer, primary_key=True)
+    de_id = Column(Integer, ForeignKey("de_documento.id", ondelete="CASCADE"))
+    itiptra = Column(SmallInteger)
+    ddestiptra = Column(String(36))
+    itimp = Column(SmallInteger, nullable=False)
+    ddestimp = Column(String(11), nullable=False)
+    cmoneope = Column(String(3), nullable=False)
+    ddesmoneope = Column(String(20), nullable=False)
+    dcondticam = Column(SmallInteger)
+    dticam = Column(Numeric(9, 4))
+    icondant = Column(SmallInteger)
+    ddescondant = Column(String(17))
+    
+    documento = relationship("Documento", back_populates="operacion_comercial")
