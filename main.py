@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Documento, Timbrado as TimbradoModel, Emisor as EmisorModel, EmisorActividad as EmisorActividadModel, Item as ItemModel, Totales as TotalesModel, OperacionComercial as OperacionComercialModel
-from schemas import FacturaSchema
+from models import Documento, Timbrado as TimbradoModel, Emisor as EmisorModel, EmisorActividad as EmisorActividadModel, Item as ItemModel, Totales as TotalesModel, OperacionComercial as OperacionComercialModel, NotaCreditoDebito as NotaCreditoDebitoModel,Evento as EventoModel
+from schemas import FacturaSchema , EventoSchema
 
 app = FastAPI()
 
@@ -108,11 +108,14 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
 @app.post("/Api/sifen/NC")
 def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
     
+
+    
     doc = Documento(
         id_de=factura.id_de,
         ddvid=factura.ddvid,
         dfecfirma=factura.dfecfirma,
-        dsisfact=factura.dsisfact
+        dsisfact=factura.dsisfact,
+        dfeemide = factura.dfeemide
     )
     db.add(doc)
     db.flush()  
@@ -194,6 +197,15 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
             dtotopeitem=item.valor_item.valor_resta.dtotopeitem
         )
         db.add(db_item)
+      
+    # nota_cd
+        
+    nota_cd = NotaCreditoDebitoModel(
+        de_id=doc.id,
+        imotemi=factura.nota_credito_debito.imotemi,
+        ddesmotemi=factura.nota_credito_debito.ddesmotemi
+    )
+    db.add(nota_cd)
 
     # Totales
     totales = TotalesModel(
@@ -206,3 +218,31 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
     db.commit()
 
     return {"msg": "Nota de crédito creada correctamente", "id_de": doc.id_de}
+
+
+@app.post("/Api/sifen/evento/cancelacion")
+def postCancelacion(evento: EventoSchema, db: Session = Depends(get_db)):
+    # Validar que sea tipo cancelación
+    if evento.dtigde != 1:
+        raise HTTPException(status_code=400, detail="Tipo de evento debe ser 1 (Cancelación)")
+    
+    # Buscar el documento por CDC
+    documento = db.query(Documento).filter(Documento.id_de == evento.cdc_dte).first()
+    if not documento:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    
+    # Crear evento de cancelación
+    nuevo_evento = EventoModel(
+        id_evento=evento.id_evento,
+        dfecfirma=evento.dfecfirma,
+        dverfor=evento.dverfor,
+        dtigde=evento.dtigde,
+        cdc_dte=evento.cdc_dte,
+        mototEve=evento.mototEve,
+        de_id=documento.id
+    )
+    
+    db.add(nuevo_evento)
+    db.commit()
+    
+    return {"msg": "Evento de cancelación registrado correctamente", "id_evento": evento.id_evento}

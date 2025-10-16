@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Numeric, ForeignKey, SmallInteger, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Date, Numeric, ForeignKey, SmallInteger, TIMESTAMP, func, Text
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -10,6 +10,7 @@ class Documento(Base):
     ddvid = Column(Integer)
     dfecfirma = Column(TIMESTAMP)
     dsisfact = Column(SmallInteger)
+    dfeemide = Column(TIMESTAMP, nullable=False)
 
     operacion = relationship("Operacion", back_populates="documento", uselist=False)
     timbrado = relationship("Timbrado", back_populates="documento", uselist=False)
@@ -18,6 +19,8 @@ class Documento(Base):
     items = relationship("Item", back_populates="documento")
     totales = relationship("Totales", back_populates="documento", uselist=False)
     operacion_comercial = relationship("OperacionComercial", back_populates="documento", uselist=False)
+    nota_credito_debito = relationship("NotaCreditoDebito", back_populates="documento", uselist=False)
+    eventos = relationship("Evento", back_populates="documento")
 
 
 class OperaciondeDE(Base):
@@ -182,3 +185,40 @@ class OperacionComercial(Base):
     ddescondant = Column(String(17))
     
     documento = relationship("Documento", back_populates="operacion_comercial")
+    
+class NotaCreditoDebito(Base):
+    __tablename__ = "de_nota_credito_debito"
+    
+    id = Column(Integer, primary_key=True)
+    de_id = Column(Integer, ForeignKey("de_documento.id", ondelete="CASCADE"))
+    imotemi = Column(SmallInteger, nullable=False)  # E401: Motivo de emisión (1-8)
+    ddesmotemi = Column(String(30), nullable=False)  # E402: Descripción motivo
+    
+    documento = relationship("Documento", back_populates="nota_credito_debito")
+    
+    
+class Evento(Base):
+    __tablename__ = "de_eventos"
+    
+    id = Column(Integer, primary_key=True)
+    id_evento = Column(String(10), nullable=False)  # GDE003
+    dfecfirma = Column(TIMESTAMP, nullable=False)   # GDE004
+    dverfor = Column(Integer, nullable=False)       # GDE005
+    dtigde = Column(Integer, nullable=False)        # GDE006: 1=Cancelación, 2=Inutilización
+    
+    # Campos para CANCELACIÓN (dtigde = 1)
+    cdc_dte = Column(String(44))                    # GEC002: CDC del DTE
+    mototEve = Column(Text)                         # GEC003: Motivo
+    
+    # Campos para INUTILIZACIÓN (dtigde = 2)
+    dnumtim = Column(String(8))                     # GEI002: Número del Timbrado
+    dest = Column(String(3))                        # GEI003: Establecimiento
+    dpunexp = Column(String(3))                     # GEI004: Punto de expedición
+    dnumin = Column(String(7))                      # GEI005: Número Inicio del rango
+    dnumfin = Column(String(7))                     # GEI006: Número Final del rango
+    itide = Column(SmallInteger)                    # GEI007: Tipo de Documento Electrónico
+    
+    de_id = Column(Integer, ForeignKey("de_documento.id", ondelete="CASCADE"))
+    created_at = Column(TIMESTAMP, default=func.now())
+    
+    documento = relationship("Documento", back_populates="eventos")

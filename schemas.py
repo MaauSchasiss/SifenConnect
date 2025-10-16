@@ -164,6 +164,7 @@ class FacturaSchema(BaseModel):
     ddvid: int = Field(..., ge=0, le=9)
     dfecfirma: datetime
     dsisfact: int = Field(..., ge=1, le=2)
+    dfeemide: datetime
 
     operacion: OperacionSchema
     timbrado: TimbradoSchema
@@ -172,3 +173,31 @@ class FacturaSchema(BaseModel):
     items: List[ItemSchema] = Field(default_factory=list)
     totales: TotalesSchema
     operacion_comercial : OperacionComercialSchema
+    
+class NotaCreditoDebitoSchema(BaseModel):
+    imotemi: int = Field(..., ge=1, le=8)
+    ddesmotemi: str = Field(..., min_length=6, max_length=30)
+    
+    class Config:
+        from_attributes = True
+        
+class EventoSchema(BaseModel):
+    id_evento: str = Field(..., min_length=1, max_length=10)
+    dfecfirma: datetime
+    dverfor: int = Field(..., ge=1)
+    dtigde: int = Field(..., ge=1, le=13)
+    
+    # Campos para CANCELACIÓN (dtigde = 1)
+    cdc_dte: Optional[str] = Field(None, min_length=44, max_length=44)
+    mototEve: Optional[str] = Field(None, min_length=5, max_length=500)
+    
+    # Campos para INUTILIZACIÓN (dtigde = 2)
+    dnumtim: Optional[str] = Field(None, min_length=8, max_length=8)
+    dest: Optional[str] = Field(None, min_length=3, max_length=3)
+    dpunexp: Optional[str] = Field(None, min_length=3, max_length=3)
+    dnumin: Optional[str] = Field(None, min_length=7, max_length=7)
+    dnumfin: Optional[str] = Field(None, min_length=7, max_length=7)
+    itide: Optional[int] = Field(None, ge=1, le=8)
+    
+    class Config:
+        from_attributes = True
