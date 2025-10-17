@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from datetime import datetime, date
 from decimal import Decimal
-
+import re
 # ---------------------------
 # Operacion
 # ---------------------------
@@ -12,7 +12,7 @@ class OperacionSchema(BaseModel):
     ddestipemi: str = Field(..., max_length=12)
     dcodseg: str = Field(..., max_length=9)
     dinfoemi: Optional[str] = Field(None, max_length=3000)
-    dinfosc: Optional[str] = Field(None, max_length=3000)
+    dinfofisc: Optional[str] = Field(None, max_length=3000)
 
 # ---------------------------
 # Timbrado
@@ -31,33 +31,62 @@ class TimbradoSchema(BaseModel):
 # Emisor
 # ---------------------------
 class EmisorActividadSchema(BaseModel):
-    cacteco: str = Field(..., max_length=8)
-    ddesacteco: str = Field(..., max_length=300)
-    
-class EmisorSchema(BaseModel):
-    drucem: str = Field(..., min_length=3, max_length=13)  # D101: RUC del contribuyente
-    ddvemi: int = Field(..., ge=0, le=9)  # D102: Dígito verificador
-    itipcont: int = Field(..., ge=1, le=2)  # D103: Tipo de contribuyente
-    ctipreg: Optional[int] = Field(None, ge=1, le=99)  # D104: Tipo de régimen (1-2 dígitos)
-    dnomemi: str = Field(..., min_length=4, max_length=255)  # D105: Nombre/Razón social
-    dnomfanemi: Optional[str] = Field(None, min_length=4, max_length=255)  # D106: Nombre de fantasía
-    ddiremi: str = Field(..., min_length=1, max_length=255)  # D107: Dirección principal
-    dnumcas: str = Field(..., min_length=1, max_length=6, pattern='^[0-9]+$')  # D108: Número de casa
-    dcompdir1: Optional[str] = Field(None, max_length=255)  # D109: Complemento dirección 1
-    dcompdir2: Optional[str] = Field(None, max_length=255)  # D110: Complemento dirección 2
-    cdepemi: int = Field(..., ge=1, le=99)  # D111: Código departamento (obligatorio)
-    ddesdepemi: str = Field(..., min_length=6, max_length=16)  # D112: Descripción departamento (obligatorio)
-    cdisemi: Optional[int] = Field(None, ge=1, le=9999)  # D113: Código distrito
-    ddesdisemi: Optional[str] = Field(None, max_length=30)  # D114: Descripción distrito
-    
-    # Campos adicionales
-    dtelem: Optional[str] = Field(None, max_length=50)
-    demail: Optional[str] = Field(None, max_length=100)
-    actividades: Optional[List[EmisorActividadSchema]] = Field(default_factory=list)
+    cacteco: str = Field(..., min_length=1, max_length=20)
+    ddesacteco: str = Field(..., min_length=1, max_length=255)
 
     class Config:
         from_attributes = True
 
+class EmisorSchema(BaseModel):
+    drucem: str = Field(..., min_length=3, max_length=8)  # D101: RUC (3-8 caracteres)
+    ddvemi: int = Field(..., ge=0, le=9)  # D102: Dígito verificador
+    itipcont: int = Field(..., ge=1, le=2)  # D103: Tipo de contribuyente (1=Persona Física, 2=Persona Jurídica)
+    ctipreg: Optional[int] = Field(None, ge=1, le=99)  # D104: Tipo de régimen (1-2 dígitos) - OPCIONAL
+    dnomemi: str = Field(..., min_length=4, max_length=255)  # D105: Nombre o razón social
+    dnomfanemi: Optional[str] = Field(None, min_length=4, max_length=255)  # D106: Nombre de fantasía - OPCIONAL
+    ddiremi: str = Field(..., min_length=1, max_length=255)  # D107: Dirección principal
+    dnumcas: str = Field(..., min_length=1, max_length=6)  # D108: Número de casa
+    dcompdir1: Optional[str] = Field(None, max_length=255)  # D109: Complemento dirección 1 - OPCIONAL
+    dcompdir2: Optional[str] = Field(None, max_length=255)  # D110: Complemento dirección 2 - OPCIONAL
+    cdepemi: int = Field(..., ge=1, le=99)  # D111: Código departamento
+    ddesdepemi: str = Field(..., min_length=6, max_length=16)  # D112: Descripción departamento
+    cdisemi: Optional[int] = Field(None, ge=1, le=9999)  # D113: Código distrito - OPCIONAL
+    ddesdisemi: Optional[str] = Field(None, max_length=30)  # D114: Descripción distrito - OPCIONAL
+    cciuremi: int = Field(..., ge=1, le=99999)  # D115: Código ciudad emisión
+    ddesciuremi: str = Field(..., min_length=1, max_length=30)  # D116: Descripción ciudad emisión
+    dtelem: str = Field(..., min_length=6, max_length=15)  # D117: Teléfono (6-15 caracteres)
+    demail: str = Field(..., min_length=3, max_length=80)  # D118: Email (3-80 caracteres)
+    ddensuc: Optional[str] = Field(None, max_length=30)  # D119: Denominación comercial sucursal - OPCIONAL
+    
+    actividades: Optional[List[EmisorActividadSchema]] = Field(default_factory=list)
+
+    # Validadores
+    @validator('dnumcas')
+    def validate_dnumcas(cls, v):
+        if not re.match(r'^[0-9]{1,6}$', v):
+            raise ValueError('dnumcas debe contener solo números y tener entre 1-6 dígitos')
+        return v
+
+    @validator('drucem')
+    def validate_drucem(cls, v):
+        if not re.match(r'^[0-9]{3,8}$', v):
+            raise ValueError('drucem debe contener solo números y tener entre 3-8 dígitos')
+        return v
+
+    @validator('demail')
+    def validate_email(cls, v):
+        if '@' not in v:
+            raise ValueError('demail debe ser una dirección de correo válida')
+        return v
+
+    @validator('dtelem')
+    def validate_telephone(cls, v):
+        if not re.match(r'^[0-9+\-\s()]{6,15}$', v):
+            raise ValueError('dtelem debe ser un número de teléfono válido')
+        return v
+
+    class Config:
+        from_attributes = True
 # ---------------------------
 # Receptor
 # ---------------------------
@@ -160,11 +189,6 @@ class OperacionComercialSchema(BaseModel):
 # ---------------------------
 class FacturaSchema(BaseModel):
     id_de: str = Field(..., max_length=44)
-    dverfor: int = Field(..., ge=100, le=999)
-    ddvid: int = Field(..., ge=0, le=9)
-    dfecfirma: datetime
-    dsisfact: int = Field(..., ge=1, le=2)
-    dfeemide: datetime
 
     operacion: OperacionSchema
     timbrado: TimbradoSchema
@@ -199,5 +223,32 @@ class EventoSchema(BaseModel):
     dnumfin: Optional[str] = Field(None, min_length=7, max_length=7)
     itide: Optional[int] = Field(None, ge=1, le=8)
     
+    class Config:
+        from_attributes = True
+
+# ---------------------------
+class EstadoSchema(BaseModel):
+    cod_estado: str = Field(..., min_length=1, max_length=10)
+    des_estado: str = Field(..., min_length=1, max_length=100)
+    mensaje_respuesta: Optional[str] = None
+    nro_transaccion: Optional[str] = Field(None, min_length=1, max_length=20)
+    origen: Optional[str] = Field('SET', min_length=1, max_length=20)
+
+    class Config:
+        from_attributes = True
+
+class ConsultaLoteSchema(BaseModel):
+    nro_lote: str = Field(..., min_length=1, max_length=15)
+    cod_respuesta_lote: Optional[int] = None
+    msg_respuesta_lote: Optional[str] = Field(None, min_length=1, max_length=255)
+
+    class Config:
+        from_attributes = True
+
+class ConsultaDocumentoSchema(BaseModel):
+    consulta_lote_id: int
+    documento_id: int
+    cdc: str = Field(..., min_length=44, max_length=44)
+
     class Config:
         from_attributes = True

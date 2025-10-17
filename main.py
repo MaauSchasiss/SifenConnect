@@ -1,19 +1,26 @@
+from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Documento, Timbrado as TimbradoModel, Emisor as EmisorModel, EmisorActividad as EmisorActividadModel, Item as ItemModel, Totales as TotalesModel, OperacionComercial as OperacionComercialModel, NotaCreditoDebito as NotaCreditoDebitoModel,Evento as EventoModel
+from models import Documento, Timbrado as TimbradoModel, Emisor as EmisorModel, EmisorActividad as EmisorActividadModel, Item as ItemModel, Totales as TotalesModel, OperacionComercial as OperacionComercialModel, NotaCreditoDebito as NotaCreditoDebitoModel,Evento as EventoModel,Operacion as OperacionModel
 from schemas import FacturaSchema , EventoSchema
+import defs
 
 app = FastAPI()
 
 @app.post("/Api/sifen/FE")
 def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
     
+    dfeemide = datetime.strptime(defs.generar_fecha_emision(), "%Y-%m-%dT%H:%M:%S")
+    dfecfirma =datetime.strptime(defs.generar_fecha_firma(dfeemide), "%Y-%m-%dT%H:%M:%S")
+
+    
     doc = Documento(
         id_de=factura.id_de,
-        ddvid=factura.ddvid,
-        dfecfirma=factura.dfecfirma,
-        dsisfact=factura.dsisfact
+        ddvid=defs.calcular_dv_11a(factura.id_de),
+        dsisfact=1,
+        dfeemide=dfeemide,
+        dfecfirma=dfecfirma
     )
     db.add(doc)
     db.flush()  
@@ -31,6 +38,16 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
         dfeinit=factura.timbrado.dfeinit
     )
     db.add(timbrado)
+    
+    operacion = OperacionModel(
+        de_id = doc.id,
+        itipemi = factura.operacion.itipemi,
+        ddestipemi = factura.operacion.ddestipemi,
+        dcodseg = defs.generar_codigo_seguridad,
+        dinfoemi = factura.operacion.dinfoemi,
+        dinfofisc = factura.operacion.dinfosc
+    )
+    db.add(operacion)
 
     # Operación Comercial
     operacion_comercial = OperacionComercialModel(
@@ -50,20 +67,26 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
 
     # Emisor
     emisor = EmisorModel(
-        de_id=doc.id,
         drucem=factura.emisor.drucem,
-        ddestide=factura.emisor.ddestide,
+        ddvemi=defs.calcular_dv_11a(factura.emisor.drucem),
         itipcont=factura.emisor.itipcont,
-        ctipreg=factura.emisor.ctipreg,
+        ctipreg=getattr(factura.emisor, 'ctipreg', None),
         dnomemi=factura.emisor.dnomemi,
+        dnomfanemi=getattr(factura.emisor, 'dnomfanemi', None),
         ddiremi=factura.emisor.ddiremi,
         dnumcas=factura.emisor.dnumcas,
+        dcompdir1=getattr(factura.emisor, 'dcompdir1', None),
+        dcompdir2=getattr(factura.emisor, 'dcompdir2', None),
         cdepemi=factura.emisor.cdepemi,
         ddesdepemi=factura.emisor.ddesdepemi,
-        cciuemi=factura.emisor.cciuemi,
-        ddesciuemi=factura.emisor.ddesciuemi,
+        cdisemi=getattr(factura.emisor, 'cdisemi', None),
+        ddesdisemi=getattr(factura.emisor, 'ddesdisemi', None),
+        cciuremi=factura.emisor.cciuemi,  # Asegúrate que este campo existe en tu data
+        ddesciuremi=factura.emisor.ddesciuemi,  # Asegúrate que este campo existe en tu data
         dtelem=factura.emisor.dtelem,
         demail=factura.emisor.demail,
+        ddensuc=getattr(factura.emisor, 'ddensuc', None),
+        actividades=[]  # O procesa las actividades si las tienes
     )
     db.add(emisor)
     db.flush()
@@ -102,20 +125,27 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
     db.add(totales)
 
     db.commit()
+    
+    defs.armarCDC(db,doc.id_de)
 
     return {"msg": "Factura electrónica creada correctamente", "id_de": doc.id_de}
+
 
 @app.post("/Api/sifen/NC")
 def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
     
 
     
+    dfeemide = datetime.strptime(defs.generar_fecha_emision(), "%Y-%m-%dT%H:%M:%S")
+    dfecfirma =datetime.strptime(defs.generar_fecha_firma(dfeemide), "%Y-%m-%dT%H:%M:%S")
+
+    
     doc = Documento(
         id_de=factura.id_de,
-        ddvid=factura.ddvid,
-        dfecfirma=factura.dfecfirma,
-        dsisfact=factura.dsisfact,
-        dfeemide = factura.dfeemide
+        ddvid=defs.calcular_dv_11a(factura.id_de),
+        dsisfact=1,
+        dfeemide = dfeemide,
+        dfecfirma=dfecfirma
     )
     db.add(doc)
     db.flush()  
@@ -133,6 +163,15 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
         dfeinit=factura.timbrado.dfeinit
     )
     db.add(timbrado)
+    
+    operacion = OperacionModel(
+        de_id = doc.id,
+        itipemi = factura.operacion.itipemi,
+        ddestipemi = factura.operacion.ddestipemi,
+        dcodseg = defs.generar_codigo_seguridad,
+        dinfoemi = factura.operacion.dinfoemi,
+        dinfofisc = factura.operacion.dinfosc
+    )
 
     # Operación Comercial
     operacion_comercial = OperacionComercialModel(
@@ -154,7 +193,7 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
     emisor = EmisorModel(
         de_id=doc.id,
         drucem=factura.emisor.drucem,
-        ddvemi=factura.emisor.ddvemi,
+        ddvemi=defs.calcular_dv_11a(factura.emisor.drucem),
         itipcont=factura.emisor.itipcont,
         ctipreg=factura.emisor.ctipreg,
         dnomemi=factura.emisor.dnomemi,
@@ -244,5 +283,42 @@ def postCancelacion(evento: EventoSchema, db: Session = Depends(get_db)):
     
     db.add(nuevo_evento)
     db.commit()
+    #logica de envio a la SET del evento cancelacion y guardado de response
+    
     
     return {"msg": "Evento de cancelación registrado correctamente", "id_evento": evento.id_evento}
+
+
+@app.post("/Api/sifen/evento/inutilizacion")
+def postInutilizacion(evento: EventoSchema, db: Session = Depends(get_db)):
+    # Validar que sea tipo inutilización
+    if evento.dtigde != 2:
+        raise HTTPException(status_code=400, detail="Tipo de evento debe ser 2 (Inutilización)")
+    
+    # Validar campos requeridos para inutilización
+    if not all([evento.dnumtim, evento.dest, evento.dpunexp, evento.dnumin, evento.dnumfin, evento.itide]):
+        raise HTTPException(status_code=400, detail="Faltan campos requeridos para inutilización")
+    
+    # Crear evento de inutilización
+    nuevo_evento = EventoModel(
+        id_evento=evento.id_evento,
+        dfecfirma=evento.dfecfirma,
+        dverfor=evento.dverfor,
+        dtigde=evento.dtigde,
+        # Campos de inutilización
+        dnumtim=evento.dnumtim,
+        dest=evento.dest,
+        dpunexp=evento.dpunexp,
+        dnumin=evento.dnumin,
+        dnumfin=evento.dnumfin,
+        itide=evento.itide,
+        mototEve=evento.mototEve
+    )
+    
+    db.add(nuevo_evento)
+    db.commit()
+    
+    #logica de envio a la SET del evento inutilizacion y guardado de response
+    
+    return {"msg": "Evento de inutilización registrado correctamente", "id_evento": evento.id_evento}
+

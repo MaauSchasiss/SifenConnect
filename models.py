@@ -5,13 +5,19 @@ from database import Base
 class Documento(Base):
     __tablename__ = "de_documento"
     id = Column(Integer, primary_key=True, index=True)
+    cdc_de = Column(String(44), unique=True , nullable=False)
     id_de = Column(String(100), unique=True, nullable=False)
     dverfor = Column(Integer)
     ddvid = Column(Integer)
     dfecfirma = Column(TIMESTAMP)
     dsisfact = Column(SmallInteger)
     dfeemide = Column(TIMESTAMP, nullable=False)
+    estado_actual = Column(String(50), default='PENDIENTE_ENVIO')
+    fecha_ultima_consulta = Column(TIMESTAMP)
+    intentos_consulta = Column(Integer, default=0)
+    nro_lote = Column(String(15))
 
+    # Relaciones 
     operacion = relationship("Operacion", back_populates="documento", uselist=False)
     timbrado = relationship("Timbrado", back_populates="documento", uselist=False)
     emisor = relationship("Emisor", back_populates="documento", uselist=False)
@@ -21,17 +27,19 @@ class Documento(Base):
     operacion_comercial = relationship("OperacionComercial", back_populates="documento", uselist=False)
     nota_credito_debito = relationship("NotaCreditoDebito", back_populates="documento", uselist=False)
     eventos = relationship("Evento", back_populates="documento")
+    estados = relationship("Estado", back_populates="documento")  # Historial de estados
+    consultas = relationship("ConsultaDocumento", back_populates="documento")  # Consultas realizadas
 
 
-class OperaciondeDE(Base):
+class Operacion(Base):
     __tablename__ = "de_operacion"
     id = Column(Integer, primary_key=True)
     de_id = Column(Integer, ForeignKey("de_documento.id", ondelete="CASCADE"))
     itipemi = Column(SmallInteger)
-    ddestipemi = Column(String(50))
-    dcodseg = Column(String(20))
-    dinfoemi = Column(SmallInteger)
-    dinfosc = Column(String(255))
+    ddestipemi = Column(String(12))
+    dcodseg = Column(String(9))
+    dinfoemi = Column(String(3000))
+    dinfofisc = Column(String(3000))
 
     documento = relationship("Documento", back_populates="operacion")
 
@@ -57,24 +65,27 @@ class Emisor(Base):
     de_id = Column(Integer, ForeignKey("de_documento.id", ondelete="CASCADE"))
     
     # Campos según especificación D100-D129
-    drucem = Column(String(13))  # D101: RUC (3-13 caracteres)
-    ddvemi = Column(SmallInteger)  # D102: Dígito verificador
-    itipcont = Column(SmallInteger)  # D103: Tipo contribuyente (1,2)
-    ctipreg = Column(SmallInteger)  # D104: Tipo régimen (1-2 dígitos)
-    dnomemi = Column(String(255))  # D105: Nombre/Razón social
+    drucem = Column(String(8), nullable=False)  # D101: RUC (3-8 caracteres)
+    ddvemi = Column(SmallInteger, nullable=False)  # D102: Dígito verificador
+    itipcont = Column(SmallInteger, nullable=False)  # D103: Tipo contribuyente (1,2)
+    ctipreg = Column(SmallInteger)  # D104: Tipo régimen (1-2 dígitos) - OPCIONAL
+    dnomemi = Column(String(255), nullable=False)  # D105: Nombre/Razón social
     dnomfanemi = Column(String(255))  # D106: Nombre fantasía (opcional)
-    ddiremi = Column(String(255))  # D107: Dirección principal
-    dnumcas = Column(String(6))  # D108: Número casa (1-6 caracteres)
+    ddiremi = Column(String(255), nullable=False)  # D107: Dirección principal
+    dnumcas = Column(String(6), nullable=False)  # D108: Número casa (1-6 caracteres)
     dcompdir1 = Column(String(255))  # D109: Complemento dirección 1 (opcional)
     dcompdir2 = Column(String(255))  # D110: Complemento dirección 2 (opcional)
-    cdepemi = Column(SmallInteger)  # D111: Código departamento
-    ddesdepemi = Column(String(16))  # D112: Descripción departamento (6-16 chars)
+    cdepemi = Column(SmallInteger, nullable=False)  # D111: Código departamento
+    ddesdepemi = Column(String(16), nullable=False)  # D112: Descripción departamento (6-16 chars)
     cdisemi = Column(SmallInteger)  # D113: Código distrito (opcional)
     ddesdisemi = Column(String(30))  # D114: Descripción distrito (opcional)
+    cciuremi = Column(SmallInteger, nullable=False)  # D115: Código ciudad emisión
+    ddesciuremi = Column(String(30), nullable=False)  # D116: Descripción ciudad emisión
     
-    # Campos adicionales (si los necesitas)
-    dtelem = Column(String(50))
-    demail = Column(String(100))
+    # Campos adicionales según especificación
+    dtelem = Column(String(15), nullable=False)  # D117: Teléfono (6-15 caracteres)
+    demail = Column(String(80), nullable=False)  # D118: Email (3-80 caracteres)
+    ddensuc = Column(String(30))  # D119: Denominación comercial sucursal (opcional)
 
     actividades = relationship("EmisorActividad", back_populates="emisor")
     documento = relationship("Documento", back_populates="emisor")
@@ -82,13 +93,11 @@ class Emisor(Base):
 class EmisorActividad(Base):
     __tablename__ = "de_emisor_actividad"
     id = Column(Integer, primary_key=True)
-    emis_id = Column(Integer, ForeignKey("de_emisor.id", ondelete="CASCADE"))
-    cacteco = Column(String(20))
-    ddesacteco = Column(String(255))
-
+    emisor_id = Column(Integer, ForeignKey("de_emisor.id", ondelete="CASCADE"))
+    cacteco = Column(String(20), nullable=False)
+    ddesacteco = Column(String(255), nullable=False)
+    
     emisor = relationship("Emisor", back_populates="actividades")
-
-
 class Receptor(Base):
     __tablename__ = "de_receptor"
     id = Column(Integer, primary_key=True)
@@ -222,3 +231,40 @@ class Evento(Base):
     created_at = Column(TIMESTAMP, default=func.now())
     
     documento = relationship("Documento", back_populates="eventos")
+    
+class Estado(Base):
+    __tablename__ = "de_estado"
+    
+    id = Column(Integer, primary_key=True)
+    de_id = Column(Integer, ForeignKey("de_documento.id", ondelete="CASCADE"))
+    cod_estado = Column(String(10), nullable=False)           # Ej: 0301
+    des_estado = Column(String(100), nullable=False)          # Ej: Aprobado
+    mensaje_respuesta = Column(Text)                         # Ej: Documento procesado correctamente
+    nro_transaccion = Column(String(20))                     # dProtAut
+    fecha_estado = Column(TIMESTAMP, default=func.now())
+    origen = Column(String(20), default='SET')               # opcional
+    
+    documento = relationship("Documento")
+
+class ConsultaLote(Base):
+    __tablename__ = "de_consulta_lote"
+    
+    id = Column(Integer, primary_key=True)
+    nro_lote = Column(String(15), nullable=False)            # Número de lote consultado
+    fecha_consulta = Column(TIMESTAMP, default=func.now())
+    cod_respuesta_lote = Column(Integer)                     # 0360, 0361, 0362
+    msg_respuesta_lote = Column(String(255))
+    
+    # Relación con documentos consultados
+    documentos_consultados = relationship("ConsultaDocumento", back_populates="consulta_lote")
+
+class ConsultaDocumento(Base):
+    __tablename__ = "de_consulta_documento"
+    
+    id = Column(Integer, primary_key=True)
+    consulta_lote_id = Column(Integer, ForeignKey("de_consulta_lote.id"))
+    documento_id = Column(Integer, ForeignKey("de_documento.id"))
+    cdc = Column(String(44), nullable=False)
+    
+    consulta_lote = relationship("ConsultaLote", back_populates="documentos_consultados")
+    documento = relationship("Documento")
