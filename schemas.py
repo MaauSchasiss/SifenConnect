@@ -115,7 +115,7 @@ class ReceptorSchema(BaseModel):
 # ---------------------------
 class ItemValorRestaSchema(BaseModel):
     ddescitem: Decimal = Field(default=0, max_digits=15, decimal_places=8)
-    dporcdesit: Optional[Decimal] = Field(None, max_digits=3, decimal_places=8)
+    dporcdesit: Optional[Decimal] = Field(None, max_digits=11, decimal_places=8)
     ddescgloitem: Optional[Decimal] = Field(None, max_digits=15, decimal_places=8)
     dtotopeitem: Decimal = Field(..., max_digits=15, decimal_places=8)
 
@@ -155,7 +155,7 @@ class TotalesSchema(BaseModel):
     dtotdescglotem: Decimal = Field(..., max_digits=15, decimal_places=8)
     dtotantitem: Decimal = Field(..., max_digits=15, decimal_places=8)
     dtotant: Decimal = Field(..., max_digits=15, decimal_places=8)
-    dporcdesctotal: Decimal = Field(..., max_digits=3, decimal_places=8)
+    dporcdesctotal: Decimal = Field(..., max_digits=11, decimal_places=8)
     ddesctotal: Decimal = Field(..., max_digits=15, decimal_places=8)
     danticipo: Decimal = Field(..., max_digits=15, decimal_places=8)
     dredon: Decimal = Field(..., max_digits=15, decimal_places=4)
@@ -184,19 +184,7 @@ class OperacionComercialSchema(BaseModel):
         from_attributes = True
 
 
-# ---------------------------
-# Documento raíz
-# ---------------------------
-class FacturaSchema(BaseModel):
-    id_de: str = Field(..., max_length=44)
 
-    operacion: OperacionSchema
-    timbrado: TimbradoSchema
-    emisor: EmisorSchema
-    receptor: ReceptorSchema
-    items: List[ItemSchema] = Field(default_factory=list)
-    totales: TotalesSchema
-    operacion_comercial : OperacionComercialSchema
     
 class NotaCreditoDebitoSchema(BaseModel):
     imotemi: int = Field(..., ge=1, le=8)
@@ -208,7 +196,7 @@ class NotaCreditoDebitoSchema(BaseModel):
 class EventoSchema(BaseModel):
     id_evento: str = Field(..., min_length=1, max_length=10)
     dfecfirma: datetime
-    dverfor: int = Field(..., ge=1)
+    dverfor: int 
     dtigde: int = Field(..., ge=1, le=13)
     
     # Campos para CANCELACIÓN (dtigde = 1)
@@ -252,3 +240,23 @@ class ConsultaDocumentoSchema(BaseModel):
 
     class Config:
         from_attributes = True
+        
+
+# ---------------------------
+# Documento raíz
+# ---------------------------
+class FacturaSchema(BaseModel):
+    id_de: str = Field(..., max_length=44)
+    dfeemide: Optional[datetime] = None
+    dfecfirma: Optional[datetime] = None
+    dverfor : int 
+
+    operacion: OperacionSchema
+    timbrado: TimbradoSchema
+    emisor: EmisorSchema
+    receptor: ReceptorSchema
+    items: List[ItemSchema] = Field(default_factory=list)
+    totales: TotalesSchema
+    operacion_comercial : OperacionComercialSchema
+    nota_credito_debito: Optional[NotaCreditoDebitoSchema] = None
+

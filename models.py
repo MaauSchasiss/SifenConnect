@@ -163,7 +163,7 @@ class Totales(Base):
     dtotdescglotem = Column(Numeric(15,2))
     dtotantitem = Column(Numeric(15,2))
     dtotant = Column(Numeric(15,2))
-    dporcdesctotal = Column(Numeric(6,2))
+    dporcdesctotal = Column(Numeric(precision=11, scale=8), nullable=False, default=0)
     ddesctotal = Column(Numeric(15,2))
     danticipo = Column(Numeric(15,2))
     dredon = Column(Numeric(15,2))

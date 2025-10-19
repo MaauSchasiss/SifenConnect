@@ -1,4 +1,6 @@
 import secrets
+import hashlib
+from typing import Optional
 from models import Documento, Timbrado as TimbradoModel, Emisor as EmisorModel, EmisorActividad as EmisorActividadModel, Item as ItemModel, Totales as TotalesModel, OperacionComercial as OperacionComercialModel, NotaCreditoDebito as NotaCreditoDebitoModel,Evento as EventoModel,Operacion as OperacionModel,Estado as EstadoModel
 from schemas import FacturaSchema , EventoSchema
 from database import get_db
@@ -59,41 +61,73 @@ def generar_codigo_seguridad() -> str:
 
 
 
-def armarCDC(db: Session, id_de: str):
+def armarCDC(db: Session = None, id_de: str = None, factura: Optional[FacturaSchema] = None) -> str:
     """
-    Genera el CDC a partir de los datos del Documento y sus relaciones.
+    Genera el CDC concatenando campos en orden según la documentación.
+    Todos los campos se rellenan con ceros a la izquierda si corresponde.
     """
+    if factura is None:
+        if db is None or id_de is None:
+            raise ValueError("Se requiere factura en memoria o db+id_de para generar CDC")
+        doc = db.query(Documento).filter(Documento.id_de == id_de).first()
+        if not doc:
+            raise ValueError("Documento no encontrado en BD")
+        emisor = db.query(EmisorModel).filter(EmisorModel.de_id == doc.id).first()
+        timbrado = db.query(TimbradoModel).filter(TimbradoModel.de_id == doc.id).first()
+        class _F: pass
+        factura = _F()
+        factura.id_de = doc.id_de
+        factura.dfecfirma = doc.dfecfirma
+        factura.emisor = emisor
+        factura.timbrado = timbrado
+        factura.operacion = db.query(OperacionModel).filter(OperacionModel.de_id == doc.id).first()
 
-    # Buscar el documento por id_de
-    doc = db.query(Documento).filter(Documento.id_de == id_de).first()
-    if not doc:
-        raise ValueError(f"No se encontró el documento con id_de: {id_de}")
+    # Validar campos obligatorios
+    faltantes = []
+    if not getattr(factura, "emisor", None):
+        faltantes.append("Emisor")
+    else:
+        for campo in ["drucem", "ddvemi", "itipcont"]:
+            if getattr(factura.emisor, campo, None) is None:
+                faltantes.append(f"Emisor.{campo}")
 
-    # Buscar relaciones
-    timbrado = db.query(TimbradoModel).filter(TimbradoModel.de_id == doc.id).first()
-    emisor = db.query(EmisorModel).filter(EmisorModel.de_id == doc.id).first()
-    operacion = db.query(OperacionModel).filter(OperacionModel.de_id == doc.id).first()
+    if not getattr(factura, "timbrado", None):
+        faltantes.append("Timbrado")
+    else:
+        for campo in ["itide", "dest", "dpunexp", "dnumdoc"]:
+            if getattr(factura.timbrado, campo, None) is None:
+                faltantes.append(f"Timbrado.{campo}")
 
-    if not all([timbrado, emisor, operacion]):
-        raise ValueError("Faltan datos relacionados para generar el CDC")
+    if not getattr(factura, "operacion", None):
+        faltantes.append("Operacion")
+    else:
+        for campo in ["itipemi", "dcodseg"]:
+            if getattr(factura.operacion, campo, None) is None:
+                faltantes.append(f"Operacion.{campo}")
 
-    # Armar la cadena del CDC según especificación
-    cadena_cdc = (
-        str(timbrado.itide).zfill(2) +
-        str(emisor.drucem).zfill(8) +
-        str(emisor.ddvemi) +
-        str(timbrado.dest).zfill(3) +
-        str(timbrado.dpunexp).zfill(3) +
-        str(timbrado.dnumdoc).zfill(7) +
-        str(emisor.itipcont) +
-        doc.dfeemide.strftime("%Y%m%d") +
-        str(operacion.itipemi) +
-        str(operacion.dcodseg).zfill(9)
+    if not getattr(factura, "dfecfirma", None):
+        faltantes.append("Documento.dfecfirma")
+
+    if faltantes:
+        raise ValueError(f"Faltan los siguientes datos para generar el CDC: {', '.join(faltantes)}")
+
+    # Construir CDC según orden de la imagen
+    cdc = (
+        str(factura.timbrado.itide).zfill(2) +
+        str(factura.emisor.drucem).zfill(8) +
+        str(factura.emisor.ddvemi) +
+        str(factura.timbrado.dest).zfill(3) +
+        str(factura.timbrado.dpunexp).zfill(3) +
+        str(factura.timbrado.dnumdoc).zfill(7) +
+        str(factura.emisor.itipcont) +
+        factura.dfecfirma.strftime("%Y%m%d") +
+        str(factura.operacion.itipemi) +
+        str(factura.operacion.dcodseg).zfill(9)
     )
 
-    return cadena_cdc
+    dv_cdc = calcular_dv_11a(cdc)
+    return f"{cdc}{dv_cdc}"
 
-    
     
 from datetime import datetime, timedelta
 
@@ -147,6 +181,5 @@ def envioAlaSET(factura: FacturaSchema, db: Session = Depends(get_db)):
         estado_actual = "Enviado/Esperando consulta"
     )
     db.add(doc)
-    db.flush()  
-    
-    
+    db.flush()
+

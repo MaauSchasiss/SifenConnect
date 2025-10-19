@@ -20,7 +20,8 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
         ddvid=defs.calcular_dv_11a(factura.id_de),
         dsisfact=1,
         dfeemide=dfeemide,
-        dfecfirma=dfecfirma
+        dfecfirma=dfecfirma,
+        dverfor=factura.dverfor
     )
     db.add(doc)
     db.flush()  
@@ -43,9 +44,9 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
         de_id = doc.id,
         itipemi = factura.operacion.itipemi,
         ddestipemi = factura.operacion.ddestipemi,
-        dcodseg = defs.generar_codigo_seguridad,
+        dcodseg = defs.generar_codigo_seguridad(),
         dinfoemi = factura.operacion.dinfoemi,
-        dinfofisc = factura.operacion.dinfosc
+        dinfofisc = factura.operacion.dinfofisc
     )
     db.add(operacion)
 
@@ -81,8 +82,8 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
         ddesdepemi=factura.emisor.ddesdepemi,
         cdisemi=getattr(factura.emisor, 'cdisemi', None),
         ddesdisemi=getattr(factura.emisor, 'ddesdisemi', None),
-        cciuremi=factura.emisor.cciuemi,  # Asegúrate que este campo existe en tu data
-        ddesciuremi=factura.emisor.ddesciuemi,  # Asegúrate que este campo existe en tu data
+        cciuremi=factura.emisor.cciuremi,  # Asegúrate que este campo existe en tu data
+        ddesciuremi=factura.emisor.ddesciuremi,  # Asegúrate que este campo existe en tu data
         dtelem=factura.emisor.dtelem,
         demail=factura.emisor.demail,
         ddensuc=getattr(factura.emisor, 'ddensuc', None),
@@ -94,7 +95,7 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
     # Actividades del emisor
     for act in factura.emisor.actividades:
         actividad = EmisorActividadModel(
-            emis_id=emisor.id,
+            emisor_id=emisor.id,
             cacteco=act.cacteco,
             ddesacteco=act.ddesacteco
         )
@@ -126,7 +127,18 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
 
     db.commit()
     
-    defs.armarCDC(db,doc.id_de)
+    factura.dfecfirma = dfecfirma
+    factura.dfeemide = dfeemide
+    
+    # generar CDC usando los datos en memoria (no requiere reconsultar DB)
+    try:
+        cdc = defs.armarCDC(factura=factura)
+        doc.cdc_de = cdc
+        db.add(doc)
+        db.commit()
+    except ValueError as e:
+        # opcional: loggear o devolver error; aquí lo convertimos en HTTP 400
+        raise HTTPException(status_code=400, detail=str(e))
 
     return {"msg": "Factura electrónica creada correctamente", "id_de": doc.id_de}
 
@@ -168,9 +180,9 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
         de_id = doc.id,
         itipemi = factura.operacion.itipemi,
         ddestipemi = factura.operacion.ddestipemi,
-        dcodseg = defs.generar_codigo_seguridad,
+        dcodseg = defs.generar_codigo_seguridad(),
         dinfoemi = factura.operacion.dinfoemi,
-        dinfofisc = factura.operacion.dinfosc
+        dinfofisc = factura.operacion.dinfofisc
     )
 
     # Operación Comercial
@@ -191,11 +203,10 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
 
     # Emisor
     emisor = EmisorModel(
-        de_id=doc.id,
         drucem=factura.emisor.drucem,
         ddvemi=defs.calcular_dv_11a(factura.emisor.drucem),
         itipcont=factura.emisor.itipcont,
-        ctipreg=factura.emisor.ctipreg,
+        ctipreg=getattr(factura.emisor, 'ctipreg', None),
         dnomemi=factura.emisor.dnomemi,
         dnomfanemi=getattr(factura.emisor, 'dnomfanemi', None),
         ddiremi=factura.emisor.ddiremi,
@@ -206,16 +217,19 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
         ddesdepemi=factura.emisor.ddesdepemi,
         cdisemi=getattr(factura.emisor, 'cdisemi', None),
         ddesdisemi=getattr(factura.emisor, 'ddesdisemi', None),
+        cciuremi=factura.emisor.cciuremi,  # Asegúrate que este campo existe en tu data
+        ddesciuremi=factura.emisor.ddesciuremi,  # Asegúrate que este campo existe en tu data
         dtelem=factura.emisor.dtelem,
         demail=factura.emisor.demail,
+        ddensuc=getattr(factura.emisor, 'ddensuc', None),
+        actividades=[]  # O procesa las actividades si las tienes
     )
     db.add(emisor)
     db.flush()
-
     # Actividades del emisor
     for act in factura.emisor.actividades:
         actividad = EmisorActividadModel(
-            emis_id=emisor.id,
+            emisor_id=emisor.id,
             cacteco=act.cacteco,
             ddesacteco=act.ddesacteco
         )
@@ -255,8 +269,20 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
     db.add(totales)
 
     db.commit()
+    factura.dfecfirma = dfecfirma
+    factura.dfeemide = dfeemide
+    
+    # generar CDC usando los datos en memoria (no requiere reconsultar DB)
+    try:
+        cdc = defs.armarCDC(factura=factura)
+        doc.cdc_de = cdc
+        db.add(doc)
+        db.commit()
+    except ValueError as e:
+        # opcional: loggear o devolver error; aquí lo convertimos en HTTP 400
+        raise HTTPException(status_code=400, detail=str(e))
 
-    return {"msg": "Nota de crédito creada correctamente", "id_de": doc.id_de}
+    return {"msg": "Factura electrónica creada correctamente", "id_de": doc.id_de}
 
 
 @app.post("/Api/sifen/evento/cancelacion")
