@@ -69,9 +69,17 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
         db.add(operacion_comercial)
 
         # Emisor
+        # Asegurarse de tener DV del emisor en memoria antes de armar CDC
+        if getattr(factura, "emisor", None) and getattr(factura.emisor, "drucem", None):
+            if getattr(factura.emisor, "ddvemi", None) is None:
+                # usar la función que tengas para calcular DV (utils o defs)
+                factura.emisor.ddvemi = utils.calcular_dv_11a(factura.emisor.drucem)
+
+        # al crear el registro Emisor en la BD, usar el ddvemi calculado
         emisor = EmisorModel(
+            de_id=doc.id,
             drucem=factura.emisor.drucem,
-            ddvemi=utils.calcular_dv_11a(factura.emisor.drucem),
+            ddvemi=factura.emisor.ddvemi,
             itipcont=factura.emisor.itipcont,
             ctipreg=getattr(factura.emisor, 'ctipreg', None),
             dnomemi=factura.emisor.dnomemi,
@@ -205,9 +213,17 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
         db.add(operacion_comercial)
 
         # Emisor
+        # Asegurarse de tener DV del emisor en memoria antes de armar CDC
+        if getattr(factura, "emisor", None) and getattr(factura.emisor, "drucem", None):
+            if getattr(factura.emisor, "ddvemi", None) is None:
+                # usar la función que tengas para calcular DV (utils o defs)
+                factura.emisor.ddvemi = utils.calcular_dv_11a(factura.emisor.drucem)
+
+        # al crear el registro Emisor en la BD, usar el ddvemi calculado
         emisor = EmisorModel(
+            de_id=doc.id,
             drucem=factura.emisor.drucem,
-            ddvemi=utils.calcular_dv_11a(factura.emisor.drucem),
+            ddvemi=factura.emisor.ddvemi,
             itipcont=factura.emisor.itipcont,
             ctipreg=getattr(factura.emisor, 'ctipreg', None),
             dnomemi=factura.emisor.dnomemi,
