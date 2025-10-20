@@ -4,19 +4,19 @@ from sqlalchemy.orm import Session,joinedload
 from database import get_db
 from models import Documento, Timbrado as TimbradoModel, Emisor as EmisorModel, EmisorActividad as EmisorActividadModel, Item as ItemModel, Totales as TotalesModel, OperacionComercial as OperacionComercialModel, NotaCreditoDebito as NotaCreditoDebitoModel,Evento as EventoModel,Operacion as OperacionModel,Estado as EstadoModel
 from schemas import FacturaSchema , EventoSchema
-import defs
+import utils
 
 app = FastAPI()
 
 @app.post("/Api/sifen/FE")
 def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
     try:
-        dfeemide = datetime.strptime(defs.generar_fecha_emision(), "%Y-%m-%dT%H:%M:%S")
-        dfecfirma = datetime.strptime(defs.generar_fecha_firma(dfeemide), "%Y-%m-%dT%H:%M:%S")
+        dfeemide = datetime.strptime(utils.generar_fecha_emision(), "%Y-%m-%dT%H:%M:%S")
+        dfecfirma = datetime.strptime(utils.generar_fecha_firma(dfeemide), "%Y-%m-%dT%H:%M:%S")
 
         doc = Documento(
             id_de=factura.id_de,
-            ddvid=defs.calcular_dv_11a(factura.id_de),
+            ddvid=utils.calcular_dv_11a(factura.id_de),
             dsisfact=1,
             dfeemide=dfeemide,
             dfecfirma=dfecfirma,
@@ -40,7 +40,7 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
         db.add(timbrado)
 
         # generar dcodseg y crear operacion (mantener en memoria)
-        dcodseg = defs.generar_codigo_seguridad()
+        dcodseg = utils.generar_codigo_seguridad()
         operacion = OperacionModel(
             de_id=doc.id,
             itipemi=factura.operacion.itipemi,
@@ -71,7 +71,7 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
         # Emisor
         emisor = EmisorModel(
             drucem=factura.emisor.drucem,
-            ddvemi=defs.calcular_dv_11a(factura.emisor.drucem),
+            ddvemi=utils.calcular_dv_11a(factura.emisor.drucem),
             itipcont=factura.emisor.itipcont,
             ctipreg=getattr(factura.emisor, 'ctipreg', None),
             dnomemi=factura.emisor.dnomemi,
@@ -131,13 +131,13 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
         factura.dfeemide = dfeemide
 
         # generar CDC usando datos en memoria
-        cdc = defs.armarCDC(factura=factura)
+        cdc = utils.armarCDC(factura=factura)
         doc.cdc_de = cdc
         db.add(doc)
 
         # envío a la SET (si falla, no se confirma la transacción)
-        defs.envioAlaSET(factura=factura, db=db)
-        defs.consultaSet(factura.id_de, db=db)
+        utils.envioAlaSET(factura=factura, db=db)
+        utils.consultaSet(factura.id_de, db=db)
 
         # todo validado -> confirmar una sola vez
         db.commit()
@@ -152,12 +152,12 @@ def postFE(factura: FacturaSchema, db: Session = Depends(get_db)):
 @app.post("/Api/sifen/NC")
 def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
     try:
-        dfeemide = datetime.strptime(defs.generar_fecha_emision(), "%Y-%m-%dT%H:%M:%S")
-        dfecfirma = datetime.strptime(defs.generar_fecha_firma(dfeemide), "%Y-%m-%dT%H:%M:%S")
+        dfeemide = datetime.strptime(utils.generar_fecha_emision(), "%Y-%m-%dT%H:%M:%S")
+        dfecfirma = datetime.strptime(utils.generar_fecha_firma(dfeemide), "%Y-%m-%dT%H:%M:%S")
 
         doc = Documento(
             id_de=factura.id_de,
-            ddvid=defs.calcular_dv_11a(factura.id_de),
+            ddvid=utils.calcular_dv_11a(factura.id_de),
             dsisfact=1,
             dfeemide=dfeemide,
             dfecfirma=dfecfirma
@@ -183,7 +183,7 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
             de_id = doc.id,
             itipemi = factura.operacion.itipemi,
             ddestipemi = factura.operacion.ddestipemi,
-            dcodseg = defs.generar_codigo_seguridad(),
+            dcodseg = utils.generar_codigo_seguridad(),
             dinfoemi = factura.operacion.dinfoemi,
             dinfofisc = factura.operacion.dinfofisc
         )
@@ -207,7 +207,7 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
         # Emisor
         emisor = EmisorModel(
             drucem=factura.emisor.drucem,
-            ddvemi=defs.calcular_dv_11a(factura.emisor.drucem),
+            ddvemi=utils.calcular_dv_11a(factura.emisor.drucem),
             itipcont=factura.emisor.itipcont,
             ctipreg=getattr(factura.emisor, 'ctipreg', None),
             dnomemi=factura.emisor.dnomemi,
@@ -275,12 +275,12 @@ def postNC(factura: FacturaSchema, db: Session = Depends(get_db)):
         factura.dfeemide = dfeemide
         
         # generar CDC usando los datos en memoria 
-        cdc = defs.armarCDC(factura=factura)
+        cdc = utils.armarCDC(factura=factura)
         doc.cdc_de = cdc
         db.add(doc)
 
         # envío a la SET (si falla, no se confirma la transacción)
-        defs.envioAlaSET(factura=factura, db=db)
+        utils.envioAlaSET(factura=factura, db=db)
 
         db.commit()
         return {"msg": "Nota de crédito/débito creada correctamente", "id_de": doc.id_de}
@@ -312,7 +312,7 @@ def postCancelacion(evento: EventoSchema, db: Session = Depends(get_db)):
         # defs.envioEventoASeten(nuevo_evento, db) 
         
         db.commit()
-        defs.cancelacion(cdc_de=evento.cdc_dte,db=db)
+        utils.cancelacion(cdc_de=evento.cdc_dte,db=db)
         return {"msg": "Evento de cancelación registrado correctamente", "id_evento": evento.id_evento}
 
     except Exception as e:
@@ -379,7 +379,7 @@ def postInutilizacion(evento: EventoSchema, db: Session = Depends(get_db)):
         # defs.envioEventoASeten(nuevo_evento, db)  # lo dejarías para más adelante
         db.commit()
         db.refresh(nuevo_evento)
-        defs.inutilizacion(cdc_de=nuevo_evento.cdc_dte, db=db)
+        utils.inutilizacion(cdc_de=nuevo_evento.cdc_dte, db=db)
 
         return {
             "msg": "Evento de inutilización registrado correctamente",
@@ -426,7 +426,7 @@ def consultar_estado_cdc(cdc: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Documento no encontrado")
 
     # 3️⃣ Simular llamada a la SET
-    respuesta_simulada = defs.simular_consulta_set(cdc)
+    respuesta_simulada = utils.simular_consulta_set(cdc)
 
     # 4️⃣ Guardar el nuevo estado
     nuevo_estado = EstadoModel(
