@@ -217,7 +217,7 @@ class Evento(Base):
     
     # Campos para CANCELACIÓN (dtigde = 1)
     cdc_dte = Column(String(44))                    # GEC002: CDC del DTE
-    mototEve = Column(Text)                         # GEC003: Motivo
+    mototeve  = Column(Text)                         # GEC003: Motivo
     
     # Campos para INUTILIZACIÓN (dtigde = 2)
     dnumtim = Column(String(8))                     # GEI002: Número del Timbrado
@@ -232,19 +232,18 @@ class Evento(Base):
     
     documento = relationship("Documento", back_populates="eventos")
     
+
 class Estado(Base):
     __tablename__ = "de_estado"
-    
+
     id = Column(Integer, primary_key=True)
     de_id = Column(Integer, ForeignKey("de_documento.id", ondelete="CASCADE"))
-    cod_estado = Column(String(10), nullable=False)           # Ej: 0301
-    des_estado = Column(String(100), nullable=False)          # Ej: Aprobado
-    mensaje_respuesta = Column(Text)                         # Ej: Documento procesado correctamente
-    nro_transaccion = Column(String(20))                     # dProtAut
-    fecha_estado = Column(TIMESTAMP, default=func.now())
-    origen = Column(String(20), default='SET')               # opcional
-    
-    documento = relationship("Documento")
+    dcodres = Column(String(10), nullable=False)          # Código del resultado (ej: 0301)
+    dmsgres = Column(String(255), nullable=False)         # Mensaje del resultado
+    dfecproc = Column(TIMESTAMP, default=func.now())      # Fecha/hora del procesamiento
+
+    documento = relationship("Documento", back_populates="estados")
+ 
 
 class ConsultaLote(Base):
     __tablename__ = "de_consulta_lote"

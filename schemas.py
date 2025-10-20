@@ -10,7 +10,7 @@ import re
 class OperacionSchema(BaseModel):
     itipemi: int = Field(..., ge=1, le=2)
     ddestipemi: str = Field(..., max_length=12)
-    dcodseg: str = Field(..., max_length=9)
+    dcodseg: Optional[str] = Field(None, max_length=9)
     dinfoemi: Optional[str] = Field(None, max_length=3000)
     dinfofisc: Optional[str] = Field(None, max_length=3000)
 
@@ -195,36 +195,30 @@ class NotaCreditoDebitoSchema(BaseModel):
         
 class EventoSchema(BaseModel):
     id_evento: str = Field(..., min_length=1, max_length=10)
-    dfecfirma: datetime
-    dverfor: int 
-    dtigde: int = Field(..., ge=1, le=13)
     
     # Campos para CANCELACIÓN (dtigde = 1)
     cdc_dte: Optional[str] = Field(None, min_length=44, max_length=44)
-    mototEve: Optional[str] = Field(None, min_length=5, max_length=500)
+    mototeve: Optional[str] = Field(None, min_length=5, max_length=500)
     
     # Campos para INUTILIZACIÓN (dtigde = 2)
-    dnumtim: Optional[str] = Field(None, min_length=8, max_length=8)
-    dest: Optional[str] = Field(None, min_length=3, max_length=3)
-    dpunexp: Optional[str] = Field(None, min_length=3, max_length=3)
-    dnumin: Optional[str] = Field(None, min_length=7, max_length=7)
-    dnumfin: Optional[str] = Field(None, min_length=7, max_length=7)
-    itide: Optional[int] = Field(None, ge=1, le=8)
+    dnumtim: Optional[str] = Field(None, min_length=8, max_length=8)  # GEI002
+    dest: Optional[str] = Field(None, min_length=3, max_length=3)     # GEI003
+    dpunexp: Optional[str] = Field(None, min_length=3, max_length=3)  # GEI004
+    dnumin: Optional[str] = Field(None, min_length=7, max_length=7)   # GEI005
+    dnumfin: Optional[str] = Field(None, min_length=7, max_length=7)  # GEI006
+    itide: Optional[int] = Field(None, ge=1, le=8)                    # GEI007
     
     class Config:
         from_attributes = True
 
 # ---------------------------
 class EstadoSchema(BaseModel):
-    cod_estado: str = Field(..., min_length=1, max_length=10)
-    des_estado: str = Field(..., min_length=1, max_length=100)
-    mensaje_respuesta: Optional[str] = None
-    nro_transaccion: Optional[str] = Field(None, min_length=1, max_length=20)
-    origen: Optional[str] = Field('SET', min_length=1, max_length=20)
+    dcodres: str = Field(..., min_length=1, max_length=10, description="Código del resultado de procesamiento (ej: 0301)")
+    dmsgres: str = Field(..., min_length=1, max_length=255, description="Mensaje del resultado de procesamiento")
+    dfecproc: Optional[datetime] = Field(None, description="Fecha y hora del procesamiento (AAAA-MM-DDThh:mm:ss)")
 
     class Config:
         from_attributes = True
-
 class ConsultaLoteSchema(BaseModel):
     nro_lote: str = Field(..., min_length=1, max_length=15)
     cod_respuesta_lote: Optional[int] = None

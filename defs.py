@@ -1,3 +1,4 @@
+import random
 import secrets
 import hashlib
 from typing import Optional
@@ -6,6 +7,10 @@ from schemas import FacturaSchema , EventoSchema
 from database import get_db
 from sqlalchemy.orm import Session
 from fastapi import FastAPI, Depends, HTTPException
+from datetime import datetime
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+from models import Documento, Estado
 
 
 def calcular_dv_11a(numero: str, basemax: int = 11) -> int:
@@ -176,10 +181,104 @@ def generar_fecha_emision(fecha_transmision: datetime = None, ajuste_horas: int 
 
 
 def envioAlaSET(factura: FacturaSchema, db: Session = Depends(get_db)):
-    
-    doc = Documento(
-        estado_actual = "Enviado/Esperando consulta"
+    actualizado = (
+        db.query(Documento)
+        .filter(Documento.id_de == factura.id_de)
+        .update({"estado_actual": "Enviado/Esperando consulta"})
     )
-    db.add(doc)
-    db.flush()
+    db.commit()
 
+    if actualizado == 0:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+
+
+
+
+def consultaSet(id_de: str, db: Session):
+    # 1️⃣ Buscar el documento por id_de
+    doc = db.query(Documento).filter(Documento.id_de == id_de).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    # 2️⃣ Obtener el CDC
+    cdc = doc.cdc_de
+    print(f"Simulando envío de documento con CDC {cdc} a la SET...")
+
+    # 3️⃣ Simular respuesta aleatoria de la SET
+    estados_simulados = [
+        ("0301", "Documento procesado correctamente (Aprobado)"),
+        ("0302", "Documento rechazado por error en firma electrónica"),
+        ("0303", "Documento pendiente de procesamiento")
+    ]
+    dCodRes, dMsgRes = random.choice(estados_simulados)
+
+    # 4️⃣ Crear registro del nuevo estado
+    nuevo_estado = Estado(
+        de_id=doc.id,
+        dcodres=dCodRes,
+        dmsgres=dMsgRes,
+        dfecproc=datetime.now()
+    )
+
+    db.add(nuevo_estado)
+    db.commit()
+    db.refresh(nuevo_estado)
+
+    # 5️⃣ (Opcional) actualizar estado_actual del documento
+    doc.estado_actual = dMsgRes
+    db.commit()
+
+    # 6️⃣ Devolver resultado simulado
+    return {
+        "cdc": cdc,
+        "dCodRes": dCodRes,
+        "dMsgRes": dMsgRes,
+        "dFecProc": nuevo_estado.dfecproc.strftime("%Y-%m-%dT%H:%M:%S")
+    }
+    
+    
+def cancelacion(cdc_de:str , db = Session ):
+    # 1️⃣ Buscar el documento por id_de
+    doc = db.query(Documento).filter(Documento.cdc_de == cdc_de).first()
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+
+    
+    print(f"Cancelacion del DE con CDC :{cdc_de} enviado...")
+
+    doc.estado_actual = "cancelado"
+    db.commit()
+
+    return f'Cancelado de forma exitosa'
+
+def inutilizacion(cdc_de:str , db = Session ):
+    # 1️⃣ Buscar el documento por id_de
+    doc = db.query(Documento).filter(Documento.cdc_de == cdc_de).first()
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+
+    
+    print(f"Cancelacion del DE con CDC :{cdc_de} enviado...")
+
+    doc.estado_actual = "Inutilizado"
+    db.commit()
+
+    return f'Cancelado de forma exitosa'
+
+def simular_consulta_set(cdc: str):
+    """
+    Simula la respuesta de la SET.
+    Devuelve un diccionario con dFecProc, dCodRes y dMsgRes.
+    """
+    return {
+        "dFecProc": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "dCodRes": "0301",  # aprobado
+        "dMsgRes": "Documento procesado correctamente (simulado)"
+    }
+
+    
