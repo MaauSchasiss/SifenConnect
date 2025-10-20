@@ -1,193 +1,345 @@
-# Documentación de la API SIFEN (README)
+Perfecto.
+Te dejo tu **documentación completamente actualizada** con los **nombres amigables (alias PascalCase)** y todos los campos coherentes con tus nuevos `schemas`.
+Está lista para guardar directamente como `API_DOCUMENTATION.md`.
 
-Resumen rápido
-- Base URL local (ejemplo): http://localhost:8000
-- Prefijo actual en la app: `/Api/sifen`
-- Transacciones atómicas: todas las inserciones se confirman solo al final; si hay error se realiza rollback.
-- El CDC se genera internamente antes del commit usando los datos en memoria.
+---
 
-Endpoints
-1) POST /Api/sifen/FE
-- Descripción: Crear Factura Electrónica (FE).
-- Código de éxito: 200 (respuesta actual), recomendable 201 Created.
-- Errores comunes: 400 (validación, campos faltantes), 422 (Pydantic).
+# 📘 Documentación de la API SIFEN
 
-Request JSON de ejemplo (mínimo funcional — ajustar según tu schema):
+### ⚙️ Resumen rápido
+
+* **Base URL local:** `http://localhost:8000`
+* **Prefijo:** `/Api/sifen`
+* **Transacciones:** atómicas — si hay error, se hace rollback completo.
+* **CDC:** se genera internamente antes del commit con los datos de la factura.
+
+---
+
+## 🔹 Endpoints principales
+
+---
+
+### **1️⃣ POST /Api/sifen/FE**
+
+**Descripción:**
+Crear una **Factura Electrónica (FE)**.
+
+**Código de éxito:** `201 Created` (recomendado)
+**Errores comunes:**
+
+* `400`: validación o datos faltantes.
+* `422`: error de tipo Pydantic.
+
+---
+
+#### 🧾 Request JSON (ejemplo funcional)
+
 ```json
 {
-  "id_de": "RUC-20251020001",
-  "dverfor": 101,
-  "timbrado": {
-    "itide": 1,
-    "dnumtim": "00001234",
-    "dest": "001",
-    "dpunexp": "001",
-    "dnumdoc": "0000001",
-    "dfeinit": "2025-10-20"
+  "IdDE": "RUC-20251020001",
+  "VersionFormato": 101,
+  "Operacion": {
+    "TipoEmision": 1,
+    "DescriTipoEmision": "EMISION",
+    "CodigoSeguridad": "123456789",
+    "InfoEmisor": "Generación normal"
   },
-  "operacion": {
-    "itipemi": 1,
-    "ddestipemi": "EMISION",
-    "dinfoemi": 0
+  "Timbrado": {
+    "TipoDocumento": 1,
+    "DescriTipoDocumento": "Factura Electrónica",
+    "NumeroTimbrado": "00001234",
+    "Establecimiento": "001",
+    "PuntoExpedicion": "001",
+    "NumeroDocumento": "0000001",
+    "SerieNumero": "A1",
+    "FechaInicioVigencia": "2025-10-20"
   },
-  "emisor": {
-    "drucem": "12345678",
-    "itipcont": 2,
-    "dnomemi": "ACME S.A.",
-    "ddiremi": "C/ Falsa 123",
-    "dnumcas": "1",
-    "cdepemi": 1,
-    "ddesdepemi": "Departamento",
-    "cciuemi": 1,
-    "ddesciuremi": "Ciudad",
-    "dtelem": "021234567",
-    "demail": "admin@acme.com",
-    "actividades": [
-      { "cacteco": "471101", "ddesacteco": "Comercio al por mayor" }
+  "Emisor": {
+    "RucEmisor": "12345678",
+    "TipoContribuyente": 2,
+    "TipoRegimen": 1,
+    "RazonSocial": "ACME S.A.",
+    "NombreFantasia": "ACME Store",
+    "Direccion": "Calle Falsa 123",
+    "NumeroCasa": "1",
+    "ComplementoDir1": "Zona Centro",
+    "CodigoDepartamento": 1,
+    "DescriDepartamento": "Central",
+    "CodigoCiudadEmision": 1,
+    "DescriCiudadEmision": "Asunción",
+    "TelefonoEmisor": "021234567",
+    "EmailEmisor": "admin@acme.com",
+    "Actividades": [
+      { "CodigoActividad": "471101", "DescripcionActividad": "Comercio al por mayor" }
     ]
   },
-  "items": [
+  "Receptor": {
+    "NaturalezaReceptor": 1,
+    "TipoOperacion": 1,
+    "CodigoPais": "PRY",
+    "DescripcionPais": "Paraguay",
+    "NombreReceptor": "Cliente Ejemplo",
+    "DireccionReceptor": "Av. Siempre Viva 742",
+    "TelefonoReceptor": "0981000000",
+    "CodigoCliente": "CLI001"
+  },
+  "Items": [
     {
-      "dcodint": "ITEM001",
-      "ddesproser": "Producto A",
-      "cuni_med": "UND",
-      "ddesunimed": "Unidad",
-      "dcantproser": "1.00",
-      "valor_item": {
-        "dpuniproser": "1000.00",
-        "dtotbruopeitem": "1000.00",
-        "valor_resta": { "ddescitem": "0.00", "dtotopeitem": "1000.00" }
+      "CodigoInterno": "ITEM001",
+      "DescripcionProductoServicio": "Producto A",
+      "CodigoUnidadMedida": "UND",
+      "DescripcionUnidadMedida": "Unidad",
+      "CantidadProductoServicio": 1.00,
+      "InformacionItem": "Producto genérico",
+      "ValorItem": {
+        "PrecioUnitario": 1000.00,
+        "TotalBrutoOperacionItem": 1000.00,
+        "ValorResta": {
+          "DescuentoItem": 0.00,
+          "PorcentajeDescuentoItem": 0.00,
+          "DescuentoGlobalItem": 0.00,
+          "TotalOperacionItem": 1000.00
+        }
       },
-      "iva": {
-        "iafeciva": 1,
-        "ddesafeciva": "Gravado IVA",
-        "dpropiva": "100.00",
-        "dtasaiva": "10.00",
-        "dbasgraviva": "1000.00",
-        "dliqivaitem": "100.00"
+      "IVA": {
+        "AfectacionIVA": 1,
+        "DescriAfectacionIVA": "Gravado IVA",
+        "ProporcionIVA": 100.00,
+        "TasaIVA": 10.00,
+        "BaseGravadaIVA": 1000.00,
+        "LiquidoIVAItem": 100.00
       }
     }
   ],
-  "totales": {
-    "dsubexe": "0.00",
-    "dtotope": "1000.00",
-    "dtotiva": "100.00"
+  "Totales": {
+    "SubExentas": 0.00,
+    "SubExoneradas": 0.00,
+    "Sub5": 0.00,
+    "Sub10": 1000.00,
+    "TotalOperacion": 1000.00,
+    "TotalIVA": 100.00,
+    "TotalGralOperacion": 1100.00
+  },
+  "OperacionComercial": {
+    "TipoTransaccion": 1,
+    "DescriTipoTransaccion": "Contado",
+    "TipoImpuesto": 1,
+    "DescriTipoImpuesto": "IVA",
+    "MonedaOperacion": "PYG",
+    "DescriMonedaOperacion": "Guaraníes"
   }
 }
 ```
 
-Response (ejemplo):
+#### ✅ Response
+
 ```json
 {
   "msg": "Factura electrónica creada correctamente",
-  "id_de": "RUC-20251020001"
+  "IdDE": "RUC-20251020001"
 }
 ```
 
-2) POST /Api/sifen/NC
-- Descripción: Crear Nota de Crédito / Débito.
-- Cuerpo similar al de FE; incluye campo `nota_credito_debito` con `imotemi` y `ddesmotemi`.
+---
 
-Request JSON mínimo (ejemplo):
+### **2️⃣ POST /Api/sifen/NC**
+
+**Descripción:**
+Crear una **Nota de Crédito o Débito Electrónica**.
+
+#### 🧾 Request JSON (ejemplo mínimo)
+
 ```json
 {
-  "id_de": "RUC-20251020002",
-  "dverfor": 101,
-  "timbrado": { "itide": 2, "dnumtim": "00005678", "dest": "001", "dpunexp":"001", "dnumdoc":"0000002", "dfeinit":"2025-10-20" },
-  "operacion": { "itipemi": 1, "ddestipemi":"EMISION" },
-  "emisor": { "drucem":"12345678", "itipcont":2, "dnomemi":"ACME S.A.", "ddiremi":"C/ Falsa 123", "dnumcas":"1", "cdepemi":1, "ddesdepemi":"Departamento", "cciuemi":1, "ddesciuremi":"Ciudad", "dtelem":"021234567", "demail":"admin@acme.com" },
-  "items": [ ... ],
-  "nota_credito_debito": { "imotemi": 1, "ddesmotemi": "Devolución por error" },
-  "totales": { "dsubexe":"0.00", "dtotope":"1000.00", "dtotiva":"100.00" }
+  "IdDE": "RUC-20251020002",
+  "VersionFormato": 101,
+  "Operacion": {
+    "TipoEmision": 1,
+    "DescriTipoEmision": "EMISION"
+  },
+  "Timbrado": {
+    "TipoDocumento": 2,
+    "DescriTipoDocumento": "Nota de Crédito",
+    "NumeroTimbrado": "00005678",
+    "Establecimiento": "001",
+    "PuntoExpedicion": "001",
+    "NumeroDocumento": "0000002",
+    "FechaInicioVigencia": "2025-10-20"
+  },
+  "Emisor": {
+    "RucEmisor": "12345678",
+    "TipoContribuyente": 2,
+    "RazonSocial": "ACME S.A.",
+    "Direccion": "C/ Falsa 123",
+    "NumeroCasa": "1",
+    "CodigoDepartamento": 1,
+    "DescriDepartamento": "Central",
+    "CodigoCiudadEmision": 1,
+    "DescriCiudadEmision": "Asunción",
+    "TelefonoEmisor": "021234567",
+    "EmailEmisor": "admin@acme.com"
+  },
+  "Items": [
+    {
+      "CodigoInterno": "ITEM002",
+      "DescripcionProductoServicio": "Producto Devuelto",
+      "CodigoUnidadMedida": "UND",
+      "DescripcionUnidadMedida": "Unidad",
+      "CantidadProductoServicio": 1.00,
+      "ValorItem": {
+        "PrecioUnitario": 1000.00,
+        "TotalBrutoOperacionItem": 1000.00,
+        "ValorResta": { "DescuentoItem": 0.00, "TotalOperacionItem": 1000.00 }
+      },
+      "IVA": {
+        "AfectacionIVA": 1,
+        "DescriAfectacionIVA": "Gravado IVA",
+        "ProporcionIVA": 100.00,
+        "TasaIVA": 10.00,
+        "BaseGravadaIVA": 1000.00,
+        "LiquidoIVAItem": 100.00
+      }
+    }
+  ],
+  "NotaCreditoDebito": {
+    "MotivoEmision": 1,
+    "DescriMotivoEmision": "Devolución por error"
+  },
+  "Totales": {
+    "SubExentas": 0.00,
+    "Sub10": 1000.00,
+    "TotalOperacion": 1000.00,
+    "TotalIVA": 100.00,
+    "TotalGralOperacion": 1100.00
+  }
 }
 ```
 
-Response:
+#### ✅ Response
+
 ```json
 {
   "msg": "Nota de crédito/débito creada correctamente",
-  "id_de": "RUC-20251020002"
+  "IdDE": "RUC-20251020002"
 }
 ```
 
-3) POST /Api/sifen/evento/cancelacion
-- Descripción: Registrar evento de cancelación de un documento.
-- Requiere `cdc_dte` (CDC del documento a cancelar).
+---
 
-Request JSON (ejemplo):
+### **3️⃣ POST /Api/sifen/evento/cancelacion**
+
+**Descripción:** Registrar **evento de cancelación** de un documento.
+
+#### 🧾 Request JSON
+
 ```json
 {
-  "id_evento": "E0001",
-  "cdc_dte": "cdc_abcdef123456",
-  "mototeve": "Motivo de cancelación"
+  "IdEvento": "E0001",
+  "CodigoDeControl": "CDC_abcdef123456789",
+  "MotivoEvento": "Cancelación por error de carga"
 }
 ```
 
-Response:
+#### ✅ Response
+
 ```json
 {
   "msg": "Evento de cancelación registrado correctamente",
-  "id_evento": "E0001"
+  "IdEvento": "E0001"
 }
 ```
 
-4) POST /Api/sifen/evento/inutilizacion
-- Descripción: Registrar inutilización (rango) o inutilización puntual.
-- Campos requeridos: `dtigde` (2), `dnumtim`, `dest`, `dpunexp`, `dnumin`, `dnumfin`, `itide`.
+---
 
-Request JSON (ejemplo):
+### **4️⃣ POST /Api/sifen/evento/inutilizacion**
+
+**Descripción:** Registrar **inutilización de rango o puntual**.
+
+#### 🧾 Request JSON
+
 ```json
 {
-  "id_evento": "E0002",
-  "cdc_dte": "cdc_abcdef123456",
-  "dtigde": 2,
-  "dnumtim": "00001234",
-  "dest": "001",
-  "dpunexp": "001",
-  "dnumin": "000010",
-  "dnumfin": "000020",
-  "itide": 1,
-  "mototeve": "Inutilización por rango"
+  "IdEvento": "E0002",
+  "NumeroTimbrado": "00001234",
+  "Establecimiento": "001",
+  "PuntoExpedicion": "001",
+  "NumeroInicio": "000010",
+  "NumeroFin": "000020",
+  "TipoDocumento": 1,
+  "MotivoEvento": "Inutilización por rango"
 }
 ```
 
-Response:
+#### ✅ Response
+
 ```json
 {
   "msg": "Evento de inutilización registrado correctamente",
-  "cdc_dte": "00001234001000010000020"
+  "IdEvento": "E0002"
 }
 ```
 
-5) GET /Api/sifen/consulta/{cdc}
-- Descripción: Consulta estado de CDC (último estado guardado o simulación).
-- Response 200 con estado o 404 si no existe el CDC.
+---
 
-Response ejemplo:
+### **5️⃣ GET /Api/sifen/consulta/{cdc}**
+
+**Descripción:**
+Consultar el **estado del documento electrónico** (CDC).
+
+#### ✅ Response ejemplo
+
 ```json
 {
-  "cdc": "cdc_abcdef123456",
-  "dFecProc": "2025-10-20T15:30:00",
-  "dCodRes": "0301",
-  "dMsgRes": "Documento procesado correctamente (Aprobado)"
+  "CDC": "cdc_abcdef123456",
+  "FechaProcesamiento": "2025-10-20T15:30:00",
+  "CodigoResultado": "0301",
+  "MensajeResultado": "Documento procesado correctamente (Aprobado)"
 }
 ```
 
-Errores comunes y formato
-- Errores de validación (campos faltantes) devuelven 400 con detalle:
+---
+
+## ⚠️ Errores comunes
+
+#### ❌ Validación
+
 ```json
-{ "detail": "Faltan campos requeridos para inutilización: dnumtim, dest, dpunexp, itide" }
+{ "detail": "Faltan campos requeridos para inutilización: NumeroTimbrado, Establecimiento, PuntoExpedicion, TipoDocumento" }
 ```
-- En caso de excepción interna se retorna 400 (actual) con detalle; recomendable cambiar a 500 en errores del servidor.
 
-Notas operativas y recomendaciones (resumidas)
-- Validación: enviar los campos exactamente con los nombres definidos en los schemas (ej. `cuni_med`, `id_de`, `timbrado.dnumtim`).
-- Transacciones: si una operación falla se hace rollback y no se persiste nada.
-- CDC: se arma internamente (antes del commit) usando los datos en memoria; no lo envíes en el payload.
-- Recomendado: usar autenticación (API key / JWT), idempotency-key para POSTs y devolver 201 con Location al crear recursos.
+#### ⚙️ Error interno (rollback)
 
-Cómo añadir la documentación al proyecto
-- Este archivo ya está listo en `c:\Users\mauri\sifen_api\API_DOCUMENTATION.md`.
-- Generar OpenAPI/Swagger adicional: FastAPI ya genera `/docs` y `/openapi.json` con los schemas; protege `/docs` en producción o requiere auth.
+```json
+{ "detail": "Error al insertar datos, operación revertida" }
+```
 
-Fin.
+---
+
+## 🧩 Notas operativas
+
+* **Validación:** enviar los campos con sus alias (`CodigoInterno`, `TipoEmision`, etc.).
+* **Transacciones:** si un insert falla, se hace rollback automático.
+* **CDC:** lo genera internamente el backend; no se envía en el JSON.
+* **Recomendado:**
+
+  * Usar autenticación (API key o JWT).
+  * Devolver `201 Created` con encabezado `Location`.
+  * Implementar `idempotency-key` en los POST.
+
+---
+
+## 🧠 Documentación técnica
+
+FastAPI genera automáticamente:
+
+* Swagger UI → [http://localhost:8000/docs](http://localhost:8000/docs)
+* ReDoc → [http://localhost:8000/redoc](http://localhost:8000/redoc)
+* OpenAPI JSON → [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+
+> ⚠️ En producción: proteger `/docs` o requerir autenticación.
+
+---
+
+¿Querés que te agregue una sección final con **estructura de carpetas del proyecto** (para documentar `main.py`, `routers/`, `schemas/`, `models/`, etc.)?
+Eso sirve si vas a entregar esto como documentación técnica formal o a compañeros.
+
