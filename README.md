@@ -1,15 +1,9 @@
-Perfecto.
-Te dejo tu **documentación completamente actualizada** con los **nombres amigables (alias PascalCase)** y todos los campos coherentes con tus nuevos `schemas`.
-Está lista para guardar directamente como `API_DOCUMENTATION.md`.
-
----
-
 # 📘 Documentación de la API SIFEN
 
 ### ⚙️ Resumen rápido
 
 * **Base URL local:** `http://localhost:8000`
-* **Prefijo:** `/Api/sifen`
+* **Prefijo:** `/SifenConect`
 * **Transacciones:** atómicas — si hay error, se hace rollback completo.
 * **CDC:** se genera internamente antes del commit con los datos de la factura.
 
@@ -19,7 +13,7 @@ Está lista para guardar directamente como `API_DOCUMENTATION.md`.
 
 ---
 
-### **1️⃣ POST /Api/sifen/FE**
+### **1️⃣ POST /SifenConect/FE**
 
 **Descripción:**
 Crear una **Factura Electrónica (FE)**.
@@ -36,7 +30,7 @@ Crear una **Factura Electrónica (FE)**.
 
 ```json
 {
-  "IdDE": "RUC-20251020001",
+  "IdDE": "RUC-313",
   "VersionFormato": 101,
   "Operacion": {
     "TipoEmision": 1,
@@ -142,54 +136,79 @@ Crear una **Factura Electrónica (FE)**.
 
 ---
 
-### **2️⃣ POST /Api/sifen/NC**
+### **2️⃣ POST /SifenConect/NC**
 
 **Descripción:**
-Crear una **Nota de Crédito o Débito Electrónica**.
+Crear una **Nota de Crédito**.
 
 #### 🧾 Request JSON (ejemplo mínimo)
 
 ```json
 {
-  "IdDE": "RUC-20251020002",
+  "IdDE": "RUC-31",
   "VersionFormato": 101,
   "Operacion": {
     "TipoEmision": 1,
-    "DescriTipoEmision": "EMISION"
+    "DescriTipoEmision": "EMISION",
+    "CodigoSeguridad": "123456789",
+    "InfoEmisor": "Generación normal"
   },
   "Timbrado": {
-    "TipoDocumento": 2,
-    "DescriTipoDocumento": "Nota de Crédito",
-    "NumeroTimbrado": "00005678",
+    "TipoDocumento": 1,
+    "DescriTipoDocumento": "Factura Electrónica",
+    "NumeroTimbrado": "00001234",
     "Establecimiento": "001",
     "PuntoExpedicion": "001",
-    "NumeroDocumento": "0000002",
+    "NumeroDocumento": "0000001",
+    "SerieNumero": "A1",
     "FechaInicioVigencia": "2025-10-20"
   },
   "Emisor": {
     "RucEmisor": "12345678",
     "TipoContribuyente": 2,
+    "TipoRegimen": 1,
     "RazonSocial": "ACME S.A.",
-    "Direccion": "C/ Falsa 123",
+    "NombreFantasia": "ACME Store",
+    "Direccion": "Calle Falsa 123",
     "NumeroCasa": "1",
+    "ComplementoDir1": "Zona Centro",
     "CodigoDepartamento": 1,
     "DescriDepartamento": "Central",
     "CodigoCiudadEmision": 1,
     "DescriCiudadEmision": "Asunción",
     "TelefonoEmisor": "021234567",
-    "EmailEmisor": "admin@acme.com"
+    "EmailEmisor": "admin@acme.com",
+    "Actividades": [
+      { "CodigoActividad": "471101", "DescripcionActividad": "Comercio al por mayor" }
+    ]
+  },
+  "Receptor": {
+    "NaturalezaReceptor": 1,
+    "TipoOperacion": 1,
+    "CodigoPais": "PRY",
+    "DescripcionPais": "Paraguay",
+    "NombreReceptor": "Cliente Ejemplo",
+    "DireccionReceptor": "Av. Siempre Viva 742",
+    "TelefonoReceptor": "0981000000",
+    "CodigoCliente": "CLI001"
   },
   "Items": [
     {
-      "CodigoInterno": "ITEM002",
-      "DescripcionProductoServicio": "Producto Devuelto",
+      "CodigoInterno": "ITEM001",
+      "DescripcionProductoServicio": "Producto A",
       "CodigoUnidadMedida": "UND",
       "DescripcionUnidadMedida": "Unidad",
       "CantidadProductoServicio": 1.00,
+      "InformacionItem": "Producto genérico",
       "ValorItem": {
         "PrecioUnitario": 1000.00,
         "TotalBrutoOperacionItem": 1000.00,
-        "ValorResta": { "DescuentoItem": 0.00, "TotalOperacionItem": 1000.00 }
+        "ValorResta": {
+          "DescuentoItem": 0.00,
+          "PorcentajeDescuentoItem": 0.00,
+          "DescuentoGlobalItem": 0.00,
+          "TotalOperacionItem": 1000.00
+        }
       },
       "IVA": {
         "AfectacionIVA": 1,
@@ -202,15 +221,25 @@ Crear una **Nota de Crédito o Débito Electrónica**.
     }
   ],
   "NotaCreditoDebito": {
-    "MotivoEmision": 1,
-    "DescriMotivoEmision": "Devolución por error"
+    "MotivoEmision":1,
+    "DescriMotivoEmision":"Traslado por venta"
   },
   "Totales": {
     "SubExentas": 0.00,
+    "SubExoneradas": 0.00,
+    "Sub5": 0.00,
     "Sub10": 1000.00,
     "TotalOperacion": 1000.00,
     "TotalIVA": 100.00,
     "TotalGralOperacion": 1100.00
+  },
+  "OperacionComercial": {
+    "TipoTransaccion": 1,
+    "DescriTipoTransaccion": "Contado",
+    "TipoImpuesto": 1,
+    "DescriTipoImpuesto": "IVA",
+    "MonedaOperacion": "PYG",
+    "DescriMonedaOperacion": "Guaraníes"
   }
 }
 ```
@@ -219,14 +248,14 @@ Crear una **Nota de Crédito o Débito Electrónica**.
 
 ```json
 {
-  "msg": "Nota de crédito/débito creada correctamente",
+  "msg": "Nota de crédito creada correctamente",
   "IdDE": "RUC-20251020002"
 }
 ```
 
 ---
 
-### **3️⃣ POST /Api/sifen/evento/cancelacion**
+### **3️⃣ POST /SifenConect/evento/cancelacion**
 
 **Descripción:** Registrar **evento de cancelación** de un documento.
 
@@ -251,9 +280,9 @@ Crear una **Nota de Crédito o Débito Electrónica**.
 
 ---
 
-### **4️⃣ POST /Api/sifen/evento/inutilizacion**
+### **4️⃣ POST /SifenConect/evento/inutilizacion**
 
-**Descripción:** Registrar **inutilización de rango o puntual**.
+**Descripción:** Registrar **inutilización puntual**.
 
 #### 🧾 Request JSON
 
@@ -281,7 +310,7 @@ Crear una **Nota de Crédito o Débito Electrónica**.
 
 ---
 
-### **5️⃣ GET /Api/sifen/consulta/{cdc}**
+### **5️⃣ GET /SifenConect/consulta/{cdc}**
 
 **Descripción:**
 Consultar el **estado del documento electrónico** (CDC).
@@ -335,11 +364,3 @@ FastAPI genera automáticamente:
 * Swagger UI → [http://localhost:8000/docs](http://localhost:8000/docs)
 * ReDoc → [http://localhost:8000/redoc](http://localhost:8000/redoc)
 * OpenAPI JSON → [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
-
-> ⚠️ En producción: proteger `/docs` o requerir autenticación.
-
----
-
-¿Querés que te agregue una sección final con **estructura de carpetas del proyecto** (para documentar `main.py`, `routers/`, `schemas/`, `models/`, etc.)?
-Eso sirve si vas a entregar esto como documentación técnica formal o a compañeros.
-

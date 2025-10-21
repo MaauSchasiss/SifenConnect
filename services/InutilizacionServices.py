@@ -10,7 +10,7 @@ class InutilizacionServices:
     
     def inutilizacion(self,evento=EventoSchema):          
         try:
-                # buscar el documento asociado por CDC
+                
                 documento = (
                     self.db.query(Documento)
                     .options(joinedload(Documento.timbrado))
@@ -20,7 +20,7 @@ class InutilizacionServices:
                 if not documento:
                     raise HTTPException(status_code=404, detail="Documento no encontrado")
 
-                # Resolver campos: preferir valores del evento, si faltan usar los del timbrado del documento
+                
                 tim = getattr(documento, "timbrado", None)
                 dnumtim_val = evento.dnumtim or (tim.dnumtim if tim else None)
                 dest_val = evento.dest or (tim.dest if tim else None)
@@ -46,7 +46,7 @@ class InutilizacionServices:
                         detail=f"Faltan campos requeridos para inutilización: {', '.join(faltantes)}"
                 )
 
-                # crear el registro del evento usando los valores resueltos
+                
                 nuevo_evento = EventoModel(
                     id_evento=evento.id_evento,
                     dfecfirma=documento.dfecfirma,
@@ -63,7 +63,7 @@ class InutilizacionServices:
                     de_id=documento.id
                 )
                 self.db.add(nuevo_evento)
-                # defs.envioEventoASeten(nuevo_evento, db)  # lo dejarías para más adelante
+                # func envio a la set  # logica para request/response a la set
                 self.db.commit()
                 self.db.refresh(nuevo_evento)
                 simulacionInutilizacion(cdc_de=nuevo_evento.cdc_dte, db=self.db)
