@@ -66,7 +66,7 @@ class InutilizacionServices:
                 # func envio a la set  # logica para request/response a la set
                 self.db.commit()
                 self.db.refresh(nuevo_evento)
-                simulacionInutilizacion(cdc_de=nuevo_evento.cdc_dte, db=self.db)
+                
 
                 return {
                     "msg": "Evento de inutilización registrado correctamente",

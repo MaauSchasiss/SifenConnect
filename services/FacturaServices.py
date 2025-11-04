@@ -28,7 +28,7 @@ class FacturaService:
         #nota credito 
         return crear_documento(
             factura=factura,
-            itide=2,
+            itide=5,
             ddestide = "Nota de Crédito",
             incluir_nota = False,
             db = self.db

@@ -28,7 +28,8 @@ class Documento(Base):
     nota_credito_debito = relationship("NotaCreditoDebito", back_populates="documento", uselist=False)
     eventos = relationship("Evento", back_populates="documento")
     estados = relationship("Estado", back_populates="documento")  # Historial de estados
-    consultas = relationship("ConsultaDocumento", back_populates="documento")  # Consultas realizadas
+    consultas = relationship("ConsultaDocumento", back_populates="documento") 
+    campos_fuera = relationship("CamposFueraFirma",back_populates="documento")# Consultas realizadas
 
 
 class Operacion(Base):
@@ -267,3 +268,15 @@ class ConsultaDocumento(Base):
     
     consulta_lote = relationship("ConsultaLote", back_populates="documentos_consultados")
     documento = relationship("Documento")
+    
+    
+class CamposFueraFirma(Base):
+    __tablename__ = "de_campos_fuera_fe"
+    
+    id = Column(Integer, primary_key=True)
+    documento_id = Column(Integer, ForeignKey("de_documento.id"))
+    dcarqr = Column(String(600),nullable=True)
+    dinfadic = Column(String(5000),nullable=True)
+    
+    documento = relationship("Documento")
+    

@@ -13,7 +13,7 @@ from utils.generarFechaFirm import generar_fecha_firma
 from utils.generarCodSeg import generar_codigo_seguridad
 from utils.calcularDV import calcular_dv_11a
 from utils.armarCDC import armarCDC
-from utils.EnvioSET import envioAlaSET
+from utils.envioSET import envioAlaSET
 from utils.consultaSET import consultaSet
 
 def crear_documento(factura: FacturaSchema, itide: int, ddestide: str, incluir_nota: bool,db):
