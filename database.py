@@ -7,16 +7,16 @@ from dotenv import load_dotenv
 # Datos de conexión (ajustá a tu entorno)
 load_dotenv()
 
-ENV = os.getenv("ENV")
+ENV = os.getenv("ENV", "Desarrollo")
 
-if ENV == "Produccion" :
+if ENV.lower() == "produccion" :
     DATABASE_URL = os.getenv("DATABASE_URL")
 else :
     DB_USER = "postgres"
     DB_PASSWORD = "7606"
     DB_HOST = "localhost"
     DB_NAME = "Sifen_API"
-    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+    DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
 
 
